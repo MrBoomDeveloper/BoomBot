@@ -1,5 +1,5 @@
-import TelegramBot, { Message } from "node-telegram-bot-api";
-import { initMafiaCommands } from "./commands/mafia";
+import TelegramBot, { CallbackQuery, Message } from "node-telegram-bot-api";
+import { initMafia } from "./commands/mafia";
 import { parseCommandName } from "./util/parser";
 import { initBaseCommands } from "./commands/base";
 
@@ -8,9 +8,15 @@ export const credentials = {
     username: "mrboomdev_boombot"
 }
 
-export const bot = new TelegramBot(credentials.token, { polling: true });
+/** START BOT **/
 
-const commands: Record<string, (Message) => void> = {};
+export const bot = new TelegramBot(credentials.token, { polling: true });
+console.info("Bot started!");
+
+
+/** REGISTER COMMANDS **/
+
+const commands: Record<string, (message: Message) => void> = {};
 
 export function addCommand(name: string, command: (message: Message) => void) {
     commands[name] = command;
@@ -28,11 +34,32 @@ bot.on("message", message => {
     command?.(message);
 });
 
+
+/** REGISTER QUERY CALLBACKS **/
+
+const queryCallbacks: Record<string, (data: string, query: CallbackQuery) => void> = {};
+
+export function addQueryCallback(name: string, callbackQuery: (data: string, callbackQuery: CallbackQuery) => void) {
+    queryCallbacks[name] = callbackQuery;
+}
+
+bot.on("callback_query", query => {
+    if(query.data == null) return;
+
+    const parsedAction = JSON.parse(query.data);
+    const callback = queryCallbacks[parsedAction.action];
+
+    if(callback != null) {
+        callback(parsedAction.data, query);
+    }
+});
+
 bot.on("polling_error", error => {
     console.error(`Polling error ${error.name}! ${error.message} at ${error.stack}`);
 });
 
-console.info("Bot started!");
 
-initMafiaCommands();
+/** START EVERYTHING **/
+
+initMafia();
 initBaseCommands();
