@@ -2,6 +2,7 @@ import TelegramBot, { CallbackQuery, Message } from "node-telegram-bot-api";
 import { initMafia } from "./commands/mafia";
 import { parseCommandName } from "./util/parser";
 import { initBaseCommands } from "./commands/base";
+import { initReactions } from "./special/reactions";
 
 export const credentials = {
     token: "6592082705:AAHLxRYP5y_w__k4yw_avvXzftvxy3h1mXg",
@@ -13,6 +14,14 @@ export const credentials = {
 export const bot = new TelegramBot(credentials.token, { polling: true });
 console.info("Bot started!");
 
+
+/** REGISTER REACTIONS **/
+
+const reactions: Record<string, (message: Message) => void> = {};
+
+export function addReaction(name: string, reaction: (message: Message) => void) {
+    reactions[name] = reaction;
+}
 
 /** REGISTER COMMANDS **/
 
@@ -28,10 +37,22 @@ bot.on("message", message => {
     console.debug(`Received message: ${message.from?.first_name}: ${message.text}`)
 
     const commandName = parseCommandName(message.text);
-    if(commandName == null) return;
-
-    const command = commands[commandName];
-    command?.(message);
+    
+    if(commandName != null) {
+        const command = commands[commandName];
+    
+        if(command != null) {
+            command(message);
+            return;
+        }
+    }
+    
+    for(const [name, command] of Object.entries(reactions)) {
+        if(message.text.toLowerCase().includes(name.toLowerCase())) {
+            command(message);
+            return;
+        }
+    }
 });
 
 
@@ -63,3 +84,4 @@ bot.on("polling_error", error => {
 
 initMafia();
 initBaseCommands();
+initReactions();

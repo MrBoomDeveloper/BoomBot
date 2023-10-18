@@ -8,10 +8,12 @@ interface Game {
 	didWarndedBeforeStart?: boolean,
 	
 	startedTime: number,
-	duration: number,
 	
 	interval: NodeJS.Timeout,
-	players: Player[]
+	players: Player[],
+	
+	step: number,
+	ticksUntilNextStep: number,
 
 	startGameMessageId?: number,
 	joinedMessageId?: number
@@ -25,14 +27,59 @@ interface Player {
 }
 
 const roles = {
-	"mafia": { name: "Мафия", team: 1 },
-	"killer": { name: "Маньяк", team: 2 },
-	"villager": { name: "Житель", team: 3 },
-	"homeless": { name: "Бомж", team: 3 },
-	"don": { name: "Дон", team: 1 },
-	"doctor": { name: "Врач", team: 3 },
-	"beauty": { name: "Красотка", team: 3 },
-	"azat": { name: "Азат", team: 4 }
+	"mafia": { 
+	    name: "Мафия", 
+	    description: "Ну чтож джентельмены, пришло время очистить этот город от мусора.",
+	    team: 1 
+	},
+	
+	"killer": { 
+	    name: "Маньяк", 
+	    description: "Устрой мясорубку и переей всех! И мафию и жителей! РЕЗНЯ!",
+	    team: 2 
+	},
+	
+	"villager": { 
+	    name: "Житель", 
+	    description: "Ну чтож засоня, ночью тебе будут сниться приятные сны и надеюсь, что с тобой все будет впорядке ;)",
+	    team: 3 
+	},
+	
+	"homeless": { 
+	    name: "Бомж", 
+	    description: "Предложи незнакомцу бутылку пойла, и он тебе расскажет обо всем.",
+	    team: 3 
+	},
+	
+	"don": { 
+	    name: "Дон", 
+	    description: "Тебе выбирать, кто завтра не проснется",
+	    team: 1 
+	},
+	
+	"doctor": { 
+	    name: "Врач", 
+	    description: "Ты будешь по ночам лечить кого-то одного, либо себя",
+	    team: 3 
+	},
+	
+	"beauty": { 
+	    name: "Красотка", 
+	    description: "Каждая ночь будет бурной как ураган в океане, что аж твои партнеры будут терять дар речи на день.",
+	    team: 3 
+	},
+	
+	"azat": { 
+	    name: "Азат", 
+	    description: "самоубийца.",
+	    team: 4 
+	},
+	
+	"none": { 
+	    name: "???",
+	    description: "???",
+	    team: -1
+	}
 }
 
 function update(chat: number) {
@@ -42,39 +89,129 @@ function update(chat: number) {
 		console.error("Interval is still alive while game doesn't exist!");
 		return;
 	}
+    
+	game.ticksUntilNextStep -= 1_000;
 
-	const currentTime = Date.now();
+    if(game.step == 0) {
+        if(game.ticksUntilNextStep <= 15_000 && !game.didWarndedBeforeStart) {
+	    	game.didWarndedBeforeStart = true;
+	    	bot.sendMessage(chat, "Игра начинается через 15 секунд!");
+	    }
 
-	if(currentTime > game?.startedTime + game.duration - 15_000 && !game.didWarndedBeforeStart) {
-		game.didWarndedBeforeStart = true;
-		bot.sendMessage(chat, "Игра начинается через 15 секунд!");
-	}
+	    if(game.ticksUntilNextStep <= 0 && !game.isStarted) {
+	    	if(game.players.length < 3) {
+			    bot.sendMessage(chat, "Как-то маловато игроков набралось... Может быть в следующий раз?");
+			    cancel(chat);
+			    return;
+		    }
 
-	if(currentTime > game?.startedTime + game.duration && !game.isStarted) {
-		if(game.players.length < 3) {
-			bot.sendMessage(chat, "Как-то маловато игроков набралось... Может быть в следующий раз?");
-			cancel(chat);
-			return;
-		}
-
-		start(chat);
-	}
+            game.ticksUntilNextStep = 4_000;
+            game.step = 1;
+		    start(chat);
+    	}
+    }
+    
+    if(game.step == 1 && game.ticksUntilNextStep <= 0) {
+        bot.sendMessage(chat, "Ночь началсь, а это значит, всем пора спать!");
+        game.ticksUntilNextStep = 5_000;
+        game.step = 2;
+    }
+    
+    if(game.step == 2 && game.ticksUntilNextStep <= 0) {
+        bot.sendMessage(chat, "Доброе утро, наш любимый город! Как вам спалось?");
+        game.ticksUntilNextStep = 5_000;
+        game.step = 3;
+    }
+    
+    if(game.step == 3 && game.ticksUntilNextStep <= 0) {
+        bot.sendMessage(chat, "Время голосовать за предателей. Кто-же это?");
+        game.step = 4;
+        game.ticksUntilNextStep = 5_000;
+    }
+    
+    if(game.step == 4 && game.ticksUntilNextStep <= 0) {
+        bot.sendMessage(chat, "Вешать мы никого не будет, не гуманно это как-то...");
+        game.step = 1;
+        game.ticksUntilNextStep = 5_000;
+    }
 }
 
 function giveRoles(chat: number) {
     const game = games[chat];
     
-    let mafiasCount = Math.round(game.players.length / 4);
+    let mafiasCount = Math.max(1, Math.round(game.players.length / 5));
     console.info("У нас будет: " + mafiasCount + " мафий.")
     
     while(mafiasCount > 0) {
-        const playerId = Math.min(game.players.length - 1, Math.round(Math.random() * game.players.length));
-        const player = game.players[playerId];
-        if(player.role != "azat") continue;
-        
-        player.role = "mafia";
+        assignRole(game, "mafia");
         mafiasCount--;
     }
+    
+    assignRole(game, "doctor");
+    assignRole(game, "killer");
+    assignRole(game, "beauty");
+    assignRole(game, "azat");
+    assignRole(game, "homeless");
+    assignRole(game, "don");
+    
+    assignRole(game, "villager");
+    if(game.players.length > 4) assignRole(game, "villager");
+    if(game.players.length > 8) assignRole(game, "villager");
+    
+    for(const player of game.players) {
+        if(player.role == "none") {
+            player.role = "villager";
+        }
+    }
+}
+
+function getRolesCount(game: Game, role: string) {
+    return game.players.reduce((total, next) => {
+        return total + next;
+    }, 0);
+}
+
+function assignRole(game: Game, role: string) {
+    let didAssigned = false;
+    let triesCount = 0;
+    
+    if(!(role in roles)) {
+        throw new Error("Unknown role! " + role);
+    }
+    
+    while(!didAssigned) {
+        const playerId = getRandomPlayer(game.players.length);
+        const player = game.players[playerId];
+        
+        if(player.role != "mafia" && role == "villager") {
+            player.role = role;
+            didAssigned = true;
+            return;
+        }
+        
+        if(triesCount > 25) return;
+        
+        triesCount++;
+        if(player.role != "none") continue;
+        
+        player.role = role;
+        didAssigned = true;
+    }
+}
+
+function getRandomPlayer(count: number) {
+    return Math.min(
+        count - 1,
+        Math.round(
+            Math.random() * count
+        )
+    );
+}
+
+function hasRole(game: Game, role: string) {
+    return game.players.find(player => {
+        return player.role == role;
+    })
 }
 
 function start(chat: number) {
@@ -91,11 +228,11 @@ function start(chat: number) {
 	giveRoles(chat);
 	
 	for(const player of game.players) {
-	    bot.sendMessage(player.id, "Твоя роль: " + roles[player.role].name);
+	    bot.sendMessage(player.id, `Твоя роль: ${roles[player.role].name}. ${roles[player.role].description}`);
 	}
 	
-	bot.sendMessage(chat, "Сказал-бы я если-бы она еще и была доделанна...");
-	cancel(chat);
+	game.step = 1;
+	game.ticksUntilNextStep = 5_000;
 }
 
 function cancel(chat: number) {
@@ -138,9 +275,12 @@ function prepareGame(message: any) {
 		const newGame: Game = {
 			isStarted: false,
 			startedTime: Date.now(),
-			duration: time * 1000,
+			
 			interval: setInterval(() => update(message.chat.id), 1_000),
-			players: []
+			players: [],
+			
+			ticksUntilNextStep: time * 1000,
+			step: 0
 		}
 
 		games[message.chat.id] = newGame;
@@ -186,6 +326,15 @@ export function initMafia() {
 
 			return;
 		}
+		
+		/*if(game.players.find(player => player.id == query.from.id)) {
+		    bot.answerCallbackQuery(query.id, {
+			    text: "Ты уже в игре!",
+			    show_alert: true
+		    });
+		    
+		    return;
+		}*/
 
 		bot.answerCallbackQuery(query.id, {
 			text: "Ты присоединился!"
@@ -194,17 +343,19 @@ export function initMafia() {
 		game.players.push({
 			name: `${query.from.first_name} - @${query.from.username}`,
 			id: query.from.id,
-			role: "azat",
+			role: "none",
 			isAlive: true
 		});
 
 		if(game.joinedMessageId != null) {
-			bot.editMessageText("Current players: " + getFancyPlayersList(game.players), {
+			bot.editMessageText(getFancyPlayersList(game.players), {
 				message_id: game.joinedMessageId,
 				chat_id: data
 			});
 		} else {
-			bot.sendMessage(query.message?.chat.id || 0, getFancyPlayersList(game.players));
+			bot.sendMessage(query.message?.chat.id || 0, getFancyPlayersList(game.players)).then(newMessage => {
+			    game.joinedMessageId = newMessage.message_id;
+			});
 		}
 	});
 
