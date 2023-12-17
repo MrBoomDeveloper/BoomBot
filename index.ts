@@ -96,10 +96,10 @@ function handleUnknown(req, res) {
     console.warn("Bot was checked through the api endpoint.");
     
 	res.status(200);
-	res.json("Bot is alive!");
+	res.send("Bot is alive!");
 }
 
-app.listen(8080, () => {
+app.listen(8000, () => {
 	console.log("Server started!");
 });
 
