@@ -23,7 +23,10 @@ interface Player {
 	name: string,
 	role: string,
 	id: number,
-	isAlive: boolean
+	
+	isAlive: boolean,
+	gotVotes: number,
+	didVote: boolean
 }
 
 const roles = {
@@ -112,7 +115,15 @@ function update(chat: number) {
     }
     
     if(game.step == 1 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Ночь началсь, а это значит, всем пора спать!");
+        bot.sendMessage(chat, "Ночь началсь, а это значит, всем пора спать! Но всем ли?", {
+            reply_markup: {
+				inline_keyboard: [[{
+				    text: "Перейти к боту",
+				    callback_data: null
+				}]]
+			}
+        });
+        
         game.ticksUntilNextStep = 5_000;
         game.step = 2;
     }
@@ -124,7 +135,18 @@ function update(chat: number) {
     }
     
     if(game.step == 3 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Время голосовать за предателей. Кто-же это?");
+        bot.sendMessage(chat, "Время голосовать за предателей. Кто-же это?", {
+            reply_markup: {
+				inline_keyboard: game.players.map(player => [{
+				    text: player.name,
+				    callback_data: JSON.stringify({
+						action: "vote",
+						data: player.id
+					})
+				}])
+			}
+        });
+        
         game.step = 4;
         game.ticksUntilNextStep = 5_000;
     }
@@ -133,6 +155,14 @@ function update(chat: number) {
         bot.sendMessage(chat, "Вешать мы никого не будет, не гуманно это как-то...");
         game.step = 1;
         game.ticksUntilNextStep = 5_000;
+        
+        for(const player of game.players) {
+            player.didVote = false;
+            player.gotVotes = 0;
+        }
+        
+        let maxVotes = 0;
+        let highestPlayer: Player = null;
     }
 }
 
@@ -344,7 +374,8 @@ export function initMafia() {
 			name: `${query.from.first_name} - @${query.from.username}`,
 			id: query.from.id,
 			role: "none",
-			isAlive: true
+			isAlive: true,
+			gotVotes: 0
 		});
 
 		if(game.joinedMessageId != null) {
@@ -357,6 +388,34 @@ export function initMafia() {
 			    game.joinedMessageId = newMessage.message_id;
 			});
 		}
+	});
+	
+	addQueryCallback("vote", (data, query) => {
+		const game = games[data] as Game;
+
+		if(game == null) {
+			bot.answerCallbackQuery(query.id, {
+				text: "Игра не найдена :(",
+				show_alert: true
+			});
+
+			return;
+		}
+		
+		if(game.players[query.from.id].didVote) {
+		    bot.answerCallbackQuery(query.id, {
+				text: "Ты уже проголосовал!",
+				show_alert: true
+			});
+			
+			return;
+		}
+
+		bot.answerCallbackQuery(query.id, {
+			text: "Твой голос отдан!"
+		});
+		
+		game.players[data].gotVotes++;
 	});
 
 	addCommand("mafia_start", message => {

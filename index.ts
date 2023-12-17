@@ -1,4 +1,5 @@
 import TelegramBot, { CallbackQuery, Message } from "node-telegram-bot-api";
+import express from "express";
 import { initMafia } from "./commands/mafia";
 import { parseCommandName } from "./util/parser";
 import { initBaseCommands } from "./commands/base";
@@ -9,7 +10,7 @@ export const credentials = {
     username: "mrboomdev_boombot"
 }
 
-/** START BOT **/
+/** START A BOT **/
 
 export const bot = new TelegramBot(credentials.token, { polling: true });
 console.info("Bot started!");
@@ -77,6 +78,29 @@ bot.on("callback_query", query => {
 
 bot.on("polling_error", error => {
     console.error(`Polling error ${error.name}! ${error.message} at ${error.stack}`);
+});
+
+/* Start a empty server to pass a "healthy" check */
+
+const app = express();
+
+app.use((req, res, next) => {
+	console.log("New request at: " + Date.now());
+	next();
+});
+
+app.get("*", handleUnknown);
+app.post("*", handleUnknown);
+
+function handleUnknown(req, res) {
+    console.warn("Bot was checked through the api endpoint.");
+    
+	res.status(200);
+	res.json("Bot is alive!");
+}
+
+app.listen(8080, () => {
+	console.log("Server started!");
 });
 
 
