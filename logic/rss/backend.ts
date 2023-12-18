@@ -1,4 +1,5 @@
 import { XMLParser, XMLBuilder, XMLValidator} from "fast-xml-parser";
+import db from "../../db";
 
 const parser = new XMLParser({
     ignoreAttributes: false,
@@ -64,7 +65,8 @@ export function getFeed(url: string) {
                         .replaceAll("<p>", "")
                         .replaceAll("</p>", "\n")
                         .replaceAll("&nbsp;", " ")
-                        .replaceAll("<br>", "\n");
+                        .replaceAll("<br>", "\n")
+                        .replaceAll("&rarr;", "—›");
                         
                     while(item.description.includes("<img ")) {
                         const startIndex = item.description.indexOf("<img ");
@@ -76,12 +78,18 @@ export function getFeed(url: string) {
                     
                         item.description = item.description.substring(0, startIndex)
                             + item.description.substring(endIndex);
-                        
-                        console.error(item.description);
                     }
                     
-                    while(item.description.startsWith("\n")) {
-                        item.description = item.description.substring(1);
+                    for(const char of ["\n", "\t", " "]) {
+                        while(item.description.includes(char + char)) {
+                            item.description = item.description.replaceAll(char + char, char);
+                        }
+                    }
+                    
+                    for(const char of ["\n", "\t", " "]) {
+                        while(item.description.startsWith(char)) {
+                            item.description = item.description.substring(1);
+                        }
                     }
                 }
                 

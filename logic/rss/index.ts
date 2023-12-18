@@ -69,13 +69,12 @@ export default function initRss() {
             const feed = await getFeed(args[0]);
             
             for(const item of feed.items) {
-                let text = `<b>${item.title}</b>`;
+                let text = `<b>${feed.title}</b>\n`;
+                text += `<u><a href="${item.link}">${item.title}</a></u>\n`;
                 
                 if(item.description != null) {
-                    text += `\n${item.description}`;
+                    text += `\n${item.description.trim()}`;
                 }
-                
-                text += `\n${item.link}`;
                 
                 if(item.image != null) {
                     text += `<a href="${item.image}"></a>`;
@@ -84,7 +83,7 @@ export default function initRss() {
                 text += "\n";
                 
                 if(item.tags != null) {
-                    text += `\nТеги: \"${item.tags.join("\", \"")}\"`;
+                    text += `\nТеги: #${item.tags.join(", #")}. `;
                 }
                 
                 if(item.date != null) {
@@ -94,13 +93,11 @@ export default function initRss() {
                         text += `\nДата публикации: `;
                         text += `${date.getDate()}-`;
                         text += `${date.getMonth()}-`;
-                        text += `${date.getFullYear()}`;
+                        text += `${date.getFullYear()}. `;
                     } catch(e) {
-                        text += item.date;
+                        text += `\n${item.date}.`;
                     }
                 }
-                
-                text += `\nОтправлено через: ${feed.title}`;
                 
                 bot.sendMessage(message.chat.id, text, { "parse_mode": "HTML" })
                     .catch(e => {

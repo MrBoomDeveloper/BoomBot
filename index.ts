@@ -3,10 +3,10 @@ import express from "express";
 import "dotenv/config";
 import { parseCommandName } from "./util/parser";
 import initBase from "./logic/base";
-import { initReactions } from "./special/reactions";
 import initRss from "./logic/rss";
 import initMafia from "./logic/mafia";
 import { reply } from "./util/reply";
+import { connect as connectToDB } from "./db";
 
 export const credentials = {
     token: process.env.TELEGRAM_BOT_TOKEN,
@@ -17,15 +17,6 @@ export const credentials = {
 
 export const bot = new TelegramBot(credentials.token, { polling: true });
 console.info("Bot started!");
-
-
-/** REGISTER REACTIONS **/
-
-const reactions: Record<string, (message: Message) => void> = {};
-
-export function addReaction(name: string, reaction: (message: Message) => void) {
-    reactions[name] = reaction;
-}
 
 /** REGISTER COMMANDS **/
 
@@ -56,13 +47,6 @@ bot.on("message", message => {
         
         reply(message, "Неизвестная команда! Попробуйте использовать: /help");
         return;
-    }
-    
-    for(const [name, command] of Object.entries(reactions)) {
-        if(message.text.toLowerCase().includes(name.toLowerCase())) {
-            command(message);
-            return;
-        }
     }
 });
 
@@ -103,7 +87,7 @@ app.get("*", handleUnknown);
 app.post("*", handleUnknown);
 
 function handleUnknown(req, res) {
-    console.warn("Bot was checked through the api endpoint.");
+    console.warn("Bot has been checked through the api endpoint.");
     
 	res.status(200);
 	res.send("Bot is alive!");
@@ -119,7 +103,7 @@ app.listen(8000, () => {
 initMafia();
 initRss();
 initBase();
-initReactions();
+connectToDB();
 
 
 
