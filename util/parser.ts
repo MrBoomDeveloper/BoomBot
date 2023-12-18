@@ -1,5 +1,14 @@
 import { credentials } from "..";
 
+export function parseCommandArgs(message: string) {
+    if(!message.startsWith("/")) return null;
+    
+    const args = message.split(" ");
+    args.shift();
+    
+    return args;
+}
+
 export function parseCommandName(message: string) {
     if(!message.startsWith("/")) return null;
 

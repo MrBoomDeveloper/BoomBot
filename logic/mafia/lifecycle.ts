@@ -1,5 +1,5 @@
-import { addCommand, addQueryCallback, bot } from "..";
-import { reply } from "../util/reply";
+import { addCommand, addQueryCallback, bot } from "../..";
+import { reply } from "../../util/reply";
 
 const games: Record<number, Game | null> = {};
 
@@ -335,7 +335,7 @@ function prepareGame(message: any) {
 	reply(message, "Подожди пока первая игра закончиться, а то тут будет полный бардак!");
 }
 
-export function initMafia() {
+export default function initMafiaLifecycle() {
 	addQueryCallback("join_game", (data, query) => {
 		const game = games[data] as Game;
 

@@ -1,13 +1,16 @@
 import TelegramBot, { CallbackQuery, Message } from "node-telegram-bot-api";
 import express from "express";
-import { initMafia } from "./commands/mafia";
+import "dotenv/config";
 import { parseCommandName } from "./util/parser";
-import { initBaseCommands } from "./commands/base";
+import initBase from "./logic/base";
 import { initReactions } from "./special/reactions";
+import initRss from "./logic/rss";
+import initMafia from "./logic/mafia";
+import { reply } from "./util/reply";
 
 export const credentials = {
-    token: "6592082705:AAHLxRYP5y_w__k4yw_avvXzftvxy3h1mXg",
-    username: "mrboomdev_boombot"
+    token: process.env.TELEGRAM_BOT_TOKEN,
+    username: process.env.TELEGRAM_BOT_USERNAME
 }
 
 /** START A BOT **/
@@ -35,17 +38,24 @@ export function addCommand(name: string, command: (message: Message) => void) {
 bot.on("message", message => {
     if(message.text == null) return;
 
-    console.debug(`Received message: ${message.from?.first_name}: ${message.text}`)
+    console.debug(`Received message: ${message.from?.first_name}: ${message.text}`);
 
     const commandName = parseCommandName(message.text);
     
     if(commandName != null) {
         const command = commands[commandName];
+        const isAtCommand = message.text.split(" ")[0].endsWith(`@${credentials.username}`);
+        const isPersonalCommand = isAtCommand || (message.chat.type == "private");
+        
+        if(!isPersonalCommand) return;
     
         if(command != null) {
             command(message);
             return;
         }
+        
+        reply(message, "Неизвестная команда! Попробуйте использовать: /help");
+        return;
     }
     
     for(const [name, command] of Object.entries(reactions)) {
@@ -107,5 +117,9 @@ app.listen(8000, () => {
 /** START EVERYTHING **/
 
 initMafia();
-initBaseCommands();
+initRss();
+initBase();
 initReactions();
+
+
+
