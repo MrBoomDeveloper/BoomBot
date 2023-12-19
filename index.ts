@@ -6,7 +6,8 @@ import initCommon from "./logic/base/common";
 import initAdmin from "./logic/base/admin";
 import initRss from "./logic/rss";
 import initMafia from "./logic/mafia";
-import { reply } from "./util/reply";
+import { messageTo, replyTo, sendReply } from "@util/reply";
+import { prepareDB } from "./logic/db/unsafe";
 
 export const credentials = {
     token: process.env.TELEGRAM_BOT_TOKEN,
@@ -17,6 +18,7 @@ export const credentials = {
 
 export const bot = new TelegramBot(credentials.token, { polling: true });
 console.info("Bot started!");
+let didInit = false;
 
 /** REGISTER COMMANDS **/
 
@@ -31,6 +33,11 @@ bot.on("message", message => {
 
     console.debug(`Received message: ${message.from?.first_name}: ${message.text}`);
 
+    if(!didInit) {
+        replyTo(message, "Я немного запутался, повторите еще раз через минуту.");
+        return;
+    }
+
     const commandName = parseCommandName(message.text);
     
     if(commandName != null) {
@@ -41,11 +48,16 @@ bot.on("message", message => {
         if(!isPersonalCommand) return;
     
         if(command != null) {
+            if(message.text.trim().includes("\n")) {
+                replyTo(message, "Извините, но я сильно путаюсь когда вижу новые строчки :(");
+                return;
+            }
+
             command(message);
             return;
         }
         
-        reply(message, "Неизвестная команда! Попробуйте использовать: /help");
+        replyTo(message, "Неизвестная команда! Попробуйте использовать: /help");
         return;
     }
 });
@@ -100,10 +112,21 @@ app.listen(8000, () => {
 
 /** START EVERYTHING **/
 
-initMafia();
-initRss();
-initCommon();
-initAdmin();
+(async () => {
+    try {
+        await prepareDB();
+        initMafia();
+        initRss();
+        initCommon();
+        initAdmin();
+
+        didInit = true;
+    } catch(e) {
+        console.error("A fatal exception has happened!");
+        console.error(e);
+        process.exit(-1);
+    }
+})();
 
 
 

@@ -1,5 +1,5 @@
 import { addCommand, addQueryCallback, bot } from "../..";
-import { reply } from "../../util/reply";
+import { replyTo } from "@util/reply";
 
 const games: Record<number, Game | null> = {};
 
@@ -315,7 +315,7 @@ function prepareGame(message: any) {
 
 		games[message.chat.id] = newGame;
 
-		reply(message, "Ну начнем же набор в игру \"Мафия\"!", {
+		replyTo(message, "Ну начнем же набор в игру \"Мафия\"!", {
 			reply_markup: {
 				inline_keyboard: [[{
 					text: "Присоединиться",
@@ -332,7 +332,7 @@ function prepareGame(message: any) {
 		return;
 	}
 
-	reply(message, "Подожди пока первая игра закончиться, а то тут будет полный бардак!");
+	replyTo(message, "Подожди пока первая игра закончиться, а то тут будет полный бардак!");
 }
 
 export default function initMafiaLifecycle() {
@@ -431,11 +431,11 @@ export default function initMafiaLifecycle() {
 		const game = games[message.chat.id];
 
 		if(game == null) {
-			reply(message, "Но игра даже не начиналась...");
+			replyTo(message, "Но игра даже не начиналась...");
 			return;
 		}
 		
-		reply(message, "Похоже, что нам придется отменить эту игру :(");
+		replyTo(message, "Похоже, что нам придется отменить эту игру :(");
 		cancel(message.chat.id);
 	});
 
@@ -443,16 +443,16 @@ export default function initMafiaLifecycle() {
 		const game = games[message.chat.id];
 
 		if(game == null) {
-			reply(message, "Как увеличить то, чего нет...");
+			replyTo(message, "Как увеличить то, чего нет...");
 			return;
 		}
 
 		if(game.isStarted) {
-			reply(message, "Игра уже началась! Тебе придется отменить ее при помощи /mafia_stop");
+			replyTo(message, "Игра уже началась! Тебе придется отменить ее при помощи /mafia_stop");
 			return;
 		}
 
 		game.startedTime += 30_000;
-		reply(message, "Хорошо, даю вам еще +30 секунд!");
+		replyTo(message, "Хорошо, даю вам еще +30 секунд!");
 	});
 }

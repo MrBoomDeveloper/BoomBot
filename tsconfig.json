@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"allowJs": true,
+
+		"lib": ["ES2023"],
+
+		"paths": {
+			"@util/*": ["./util/*"],
+			"@src/*": ["./*"],
+			"@logic/*": ["./logic/*"]
+		}
+	}
+}

@@ -1,33 +1,67 @@
-import { Message } from "node-telegram-bot-api";
+import { ChatId, Message } from "node-telegram-bot-api";
 import { addFeed, removeFeed, listFeeds, getFeed, getXmlFeed } from "./backend";
-import { addCommand } from "../..";
-import { reply } from "../../util/reply";
-import { parseCommandArgs } from "../../util/parser";
-import { bot } from "../..";
+import { addCommand, bot } from "../..";
+import { deleteMessageFrom, messageTo, replyTo, sendMessage } from "@util/reply";
+import { isUrl, parseCommandArgs, removeTelegramUrlPrefix } from "../../util/parser";
+import { isDebug, isOwnerMessage } from "@util/common";
 
 async function add(message: Message) {
     const args = parseCommandArgs(message.text);
         
     if(args.length < 1) {
-        reply(message, "Укажите канал!");
+        replyTo(message, "Укажите канал!");
     } else if(args.length < 2) {
-        reply(message, "Укажите ссылку на подписку!");
+        replyTo(message, "Укажите ссылку на подписку!");
     } else {
-        reply(message, "Добавляем ленту...");
+        let chatId: ChatId = args[0];
+        let loadingMessage: Message;
         
         try {
-            const feed = await addFeed(args[0], args[1]);
+            if(isUrl(chatId)) {
+                chatId = removeTelegramUrlPrefix(chatId);
+            }
+
+            if(isNaN(Number(chatId))) {
+                chatId = "@" + chatId;
+
+                try {
+                    const chat = await bot.getChat(chatId);
+                    chatId = chat.id;
+                } catch(e) {
+                    replyTo(message, "Неправильный @id канала! Попробуйте скопировать его из шапки.");
+                    console.error(e);
+
+                    if(isDebug()) {
+                        replyTo(message, "Ошибка: " + e);
+                    }
+                }
+            }
+
+            if(!isUrl(args[1])) {
+                replyTo(message, "Указанна поврежденная ссылка: " + args[1]);
+                return;
+            }
+
+            loadingMessage = await replyTo(message, "Добавляем ленту...");
+            const feed = await addFeed(chatId, args[1]);
             
-            bot.sendMessage(message.chat.id, 
-`Успешно добавлена RSS лента:<a href="${feed.image}"></a>
-<b>${feed.title}</b>
-${feed.description}
-${feed.link}`, { "parse_mode": "HTML" });
+            messageTo(message, 
+`Успешно добавлена RSS лента:
+<b><u>${feed.title}</u></b>
+ - ${feed.description}
+ - ${feed.link}<a href="${feed.image}"></a>`);
+
+            deleteMessageFrom(loadingMessage);
         } catch(e) {
-            reply(message, e.message);
+            replyTo(message, e.message);
+            console.error(e);
+
+            if(loadingMessage != null) {
+                deleteMessageFrom(loadingMessage);
+            }
             
-            if(process.env.IS_DEBUG) {
-                reply(message, "Ошибка: " + JSON.stringify(e));
+            if(isDebug()) {
+                replyTo(message, "Ошибка: " + e);
             }
         }
     }
@@ -35,7 +69,7 @@ ${feed.link}`, { "parse_mode": "HTML" });
 
 export default function initRss() {
     addCommand("rss", message => {
-        bot.sendMessage(message.chat.id, 
+        messageTo(message, 
 `<b>Об RSS возможностях бота:</b>
 Получайте самые последние новости благодаря недооцененной технологии RSS прямо в личные сообщения или своф Telegram канал!
 Каждый час мы будем проверять ваши подписки на изменения и присылать их вам.
@@ -48,7 +82,7 @@ export default function initRss() {
     
     addCommand("rss_source", async (message) => {
         const args = parseCommandArgs(message.text);
-        reply(message, "Загружаем ленту...");
+        replyTo(message, "Загружаем ленту...");
         
         try {
             const data = await getXmlFeed(args[0]);
@@ -58,30 +92,30 @@ export default function initRss() {
                 text = text.substring(0, 4095);
             }
             
-            reply(message, text, { "parse_mode": "markdown" });
+            replyTo(message, text, { "parse_mode": "MarkdownV2" });
         } catch(e) {
-            reply(message, "Не удалось загрузить данные");
+            replyTo(message, "Не удалось загрузить данные");
             
             if(process.env.IS_DEBUG) {
-                reply(message, "Ошибка: " + JSON.stringify(e));
+                replyTo(message, "Ошибка: " + JSON.stringify(e));
             }
         }
     });
     
     addCommand("rss_explore", message => {
-        reply(message, "Не доступно на данный момент");
+        replyTo(message, "Не доступно на данный момент");
     });
     
     addCommand("rss_remove", message => {
-        reply(message, "Недоступно на данный момент");
+        replyTo(message, "Недоступно на данный момент");
     });
     
     addCommand("rss_list", message => {
-        reply(message, "Недоступно на данный момент");
+        replyTo(message, "Недоступно на данный момент");
     });
     
     addCommand("rss_update", async (message) => {
-        if(!process.env.IS_DEBUG) return;
+        if(!isOwnerMessage(message)) return;
         const args = parseCommandArgs(message.text);
         let isError = false;
         
@@ -119,15 +153,15 @@ export default function initRss() {
                     }
                 }
                 
-                bot.sendMessage(message.chat.id, text, { "parse_mode": "HTML" })
+                messageTo(message, text, { "parse_mode": "HTML" })
                     .catch(e => {
                         if(isError) return;
                         isError = true;
                         
-                        bot.sendMessage(message.chat.id, "Не удалось отправить ленту");
+                        messageTo(message, "Не удалось отправить ленту");
                     
                         if(process.env.IS_DEBUG) {
-                            bot.sendMessage(message.chat.id, 
+                            messageTo(message,
 `Ошибка:
 ${JSON.stringify(e)}
 Элемент:
@@ -136,10 +170,10 @@ ${JSON.stringify(item)}`);
                     });
             }
         } catch(e) {
-            reply(message, e);
+            replyTo(message, e);
             
             if(process.env.IS_DEBUG) {
-                reply(message, "Ошибка: " + JSON.stringify(e));
+                replyTo(message, "Ошибка: " + JSON.stringify(e));
             }
         }
     });

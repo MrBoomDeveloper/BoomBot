@@ -1,27 +1,50 @@
 import { addCommand } from "../..";
-import { reply } from "../../util/reply";
+import { deleteMessageFrom, messageTo, dmTo, replyTo, sendReply } from "@util/reply";
 import { resetDB } from "../db/unsafe";
+import { isDebug, isOwnerMessage } from "@util/common";
+import { parseCommandArgs } from "@util/parser";
 
 export default function initAdmin() {
-    if(!process.env.IS_DEBUG) return;
-    
     addCommand("ban", message => {
-		reply(message, "Бан не доделан.");
+		if(!isOwnerMessage(message)) return;
+
+		replyTo(message, "Бан не доделан.");
 	});
 	
 	addCommand("say", message => {
-		reply(message, "Говорилка не доделанна.");
+		if(!isOwnerMessage(message)) return;
+
+		const args = parseCommandArgs(message.text);
+
+		if(args.length == 0) {
+			dmTo(message, "Вы забыли указать текст после /say!");
+			return;
+		}
+
+		const text = args.join(" ");
+		messageTo(message, text);
+		deleteMessageFrom(message);
 	});
 	
 	addCommand("reset", async (message) => {
-		reply(message, "Начинаем сброс базы данных...");
+		if(!isOwnerMessage(message)) return;
+
+		const currentDay = new Date().getDate();
+		const args = parseCommandArgs(message.text);
+
+		if(args.length < 1 || ((args[0] as any as number) != currentDay)) {
+			replyTo(message, "В качестве подтверждения введи текущий день месяца после команды: '/reset [ДЕНЬ]'");
+			return;
+		}
+
+		replyTo(message, "Начинаем сброс базы данных...");
 		
 		try {
 		    await resetDB();
-		    reply(message, "База данных успешно сброшена!");
+		    replyTo(message, "База данных успешно сброшена!");
 		} catch(e) {
 		    console.error(e);
-		    reply(message, "Не удалось сбросить базу банных.");
+		    replyTo(message, "Не удалось сбросить базу банных.");
 		}
 	});
 }
