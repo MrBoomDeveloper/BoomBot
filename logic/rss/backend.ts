@@ -1,5 +1,5 @@
 import { XMLParser, XMLBuilder, XMLValidator} from "fast-xml-parser";
-import db from "../../db";
+import { useDB } from "../db/common";
 
 const parser = new XMLParser({
     ignoreAttributes: false,
@@ -124,6 +124,11 @@ export function getFeed(url: string) {
 }
 
 export async function addFeed(channel: string, url: string) {
+    useDB(async (db) => {
+        db.query("INSERT INTO subscriptions (channel, url, active) "
+            + `VALUES (${channel}, ${url}, true)`);
+    });
+    
     return await getFeed(url);
 }
 

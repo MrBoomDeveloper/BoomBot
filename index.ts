@@ -2,11 +2,11 @@ import TelegramBot, { CallbackQuery, Message } from "node-telegram-bot-api";
 import express from "express";
 import "dotenv/config";
 import { parseCommandName } from "./util/parser";
-import initBase from "./logic/base";
+import initCommon from "./logic/base/common";
+import initAdmin from "./logic/base/admin";
 import initRss from "./logic/rss";
 import initMafia from "./logic/mafia";
 import { reply } from "./util/reply";
-import { connect as connectToDB } from "./db";
 
 export const credentials = {
     token: process.env.TELEGRAM_BOT_TOKEN,
@@ -102,8 +102,8 @@ app.listen(8000, () => {
 
 initMafia();
 initRss();
-initBase();
-connectToDB();
+initCommon();
+initAdmin();
 
 
 

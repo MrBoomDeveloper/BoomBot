@@ -9,9 +9,9 @@ async function add(message: Message) {
     const args = parseCommandArgs(message.text);
         
     if(args.length < 1) {
-        //Suggest to pick a channel
+        reply(message, "Укажите канал!");
     } else if(args.length < 2) {
-        //Suggest to write out a Rss url
+        reply(message, "Укажите ссылку на подписку!");
     } else {
         reply(message, "Добавляем ленту...");
         
@@ -35,7 +35,15 @@ ${feed.link}`, { "parse_mode": "HTML" });
 
 export default function initRss() {
     addCommand("rss", message => {
-        reply(message, "Не доступно на данный момент.");
+        bot.sendMessage(message.chat.id, 
+`<b>Об RSS возможностях бота:</b>
+Получайте самые последние новости благодаря недооцененной технологии RSS прямо в личные сообщения или своф Telegram канал!
+Каждый час мы будем проверять ваши подписки на изменения и присылать их вам.
+    
+<b>Как начать пользоваться:</b>
+1. Добавьте бота на канал, куда нужно присылать новые посты
+2. Используйте /rss_add, чтобы подписаться на новые посты
+3. Наслаждайтесь!`, {"parse_mode": "HTML"});
     });
     
     addCommand("rss_source", async (message) => {
@@ -58,6 +66,18 @@ export default function initRss() {
                 reply(message, "Ошибка: " + JSON.stringify(e));
             }
         }
+    });
+    
+    addCommand("rss_explore", message => {
+        reply(message, "Не доступно на данный момент");
+    });
+    
+    addCommand("rss_remove", message => {
+        reply(message, "Недоступно на данный момент");
+    });
+    
+    addCommand("rss_list", message => {
+        reply(message, "Недоступно на данный момент");
     });
     
     addCommand("rss_update", async (message) => {
