@@ -6,6 +6,7 @@ import { isUrl, parseCommandArgs, removeTelegramUrlPrefix } from "../../util/par
 import { isDebug, isOwnerMessage } from "@util/common";
 
 async function add(message: Message) {
+    let isError = false;
     const args = parseCommandArgs(message.text);
         
     if(args.length < 1) {
@@ -22,18 +23,25 @@ async function add(message: Message) {
             }
 
             if(isNaN(Number(chatId))) {
-                chatId = "@" + chatId;
+                if(!chatId.startsWith("@")) {
+                    chatId = "@" + chatId;
+                }
 
                 try {
                     const chat = await bot.getChat(chatId);
                     chatId = chat.id;
                 } catch(e) {
-                    replyTo(message, "Неправильный @id канала! Попробуйте скопировать его из шапки.");
+                    if(isError) return;
+                    isError = true;
+                    
                     console.error(e);
+                    replyTo(message, "Неправильный @id канала! Попробуйте скопировать его из шапки.");
 
                     if(isDebug()) {
                         replyTo(message, "Ошибка: " + e);
                     }
+                    
+                    return;
                 }
             }
 
@@ -41,9 +49,20 @@ async function add(message: Message) {
                 replyTo(message, "Указанна поврежденная ссылка: " + args[1]);
                 return;
             }
-
-            loadingMessage = await replyTo(message, "Добавляем ленту...");
-            const feed = await addFeed(chatId, args[1]);
+            
+            let feed: Feed;
+            
+            try {
+                loadingMessage = await replyTo(message, "Добавляем ленту...");
+                feed = await addFeed(chatId, args[1]);
+            } catch(e) {
+                if(isError) return;
+                isError = true;
+                    
+                console.error(e);
+                replyTo(message, "Не удалось получить ленту");
+                return;
+            }
             
             messageTo(message, 
 `Успешно добавлена RSS лента:
@@ -53,8 +72,11 @@ async function add(message: Message) {
 
             deleteMessageFrom(loadingMessage);
         } catch(e) {
-            replyTo(message, e.message);
+            if(isError) return;
+            isError = true;
+                    
             console.error(e);
+            replyTo(message, "Произошла ошибка во время добавления ленты!");
 
             if(loadingMessage != null) {
                 deleteMessageFrom(loadingMessage);
@@ -118,9 +140,21 @@ export default function initRss() {
         if(!isOwnerMessage(message)) return;
         const args = parseCommandArgs(message.text);
         let isError = false;
+        let feed: Feed;
+        
+        if(!isUrl(args[0])) {
+            replyTo(message, "Вы указали неправилну ссылку!");
+            return;
+        }
         
         try {
-            const feed = await getFeed(args[0]);
+            try {
+                feed = await getFeed(args[0]);
+            } catch(e) {
+                isError = true;
+                console.error(e);
+                replyTo(message, "Не удалось получить ленту, возможно вы указали не RSS ссылку.");
+            }
             
             for(const item of feed.items) {
                 let text = `<b>${feed.title}</b>\n`;
@@ -153,7 +187,7 @@ export default function initRss() {
                     }
                 }
                 
-                messageTo(message, text, { "parse_mode": "HTML" })
+                messageTo(message, text)
                     .catch(e => {
                         if(isError) return;
                         isError = true;
@@ -170,7 +204,10 @@ ${JSON.stringify(item)}`);
                     });
             }
         } catch(e) {
-            replyTo(message, e);
+            if(isError) return;
+            isError = true;
+            
+            replyTo(message, "Произошла ошибка во время получения ленты.");
             
             if(process.env.IS_DEBUG) {
                 replyTo(message, "Ошибка: " + JSON.stringify(e));

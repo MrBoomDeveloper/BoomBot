@@ -117,8 +117,9 @@ export async function getFeed(url: string) {
 }
 
 export async function addFeed(chat: ChatId, url: string) {
+    const feed = await getFeed(url);
     const response = await useQuery(`INSERT INTO rss_feeds VALUES(?, ?, true)`, [Number(chat), url]);
-    return await getFeed(url);
+    return feed;
 }
 
 export async function removeFeed(chat: ChatId, url: string) {

@@ -121,6 +121,7 @@ app.listen(8000, () => {
         initAdmin();
 
         didInit = true;
+        console.debug("Started everything successfully!");
     } catch(e) {
         console.error("A fatal exception has happened!");
         console.error(e);
