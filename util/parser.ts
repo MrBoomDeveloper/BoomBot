@@ -1,4 +1,4 @@
-import { credentials } from "..";
+import { credentials } from "@logic/bot";
 
 const TELEGRAM_URL_PREFIX = "https://t.me/";
 

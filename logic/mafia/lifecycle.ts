@@ -1,5 +1,5 @@
-import { addCommand, addQueryCallback, bot } from "../..";
-import { replyTo } from "@util/reply";
+import { addTextCommand, addQueryCallback, getBot } from "@logic/bot";
+import { deleteMessage, messageTo, replyTo, sendMessage } from "@util/reply";
 
 const games: Record<number, Game | null> = {};
 
@@ -98,12 +98,12 @@ function update(chat: number) {
     if(game.step == 0) {
         if(game.ticksUntilNextStep <= 15_000 && !game.didWarndedBeforeStart) {
 	    	game.didWarndedBeforeStart = true;
-	    	bot.sendMessage(chat, "Игра начинается через 15 секунд!");
+			sendMessage(chat, "Игра начинается через 15 секунд!")
 	    }
 
 	    if(game.ticksUntilNextStep <= 0 && !game.isStarted) {
 	    	if(game.players.length < 3) {
-			    bot.sendMessage(chat, "Как-то маловато игроков набралось... Может быть в следующий раз?");
+			    sendMessage(chat, "Как-то маловато игроков набралось... Может быть в следующий раз?");
 			    cancel(chat);
 			    return;
 		    }
@@ -115,7 +115,7 @@ function update(chat: number) {
     }
     
     if(game.step == 1 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Ночь началсь, а это значит, всем пора спать! Но всем ли?", {
+        sendMessage(chat, "Ночь началсь, а это значит, всем пора спать! Но всем ли?", {
             reply_markup: {
 				inline_keyboard: [[{
 				    text: "Перейти к боту",
@@ -129,13 +129,13 @@ function update(chat: number) {
     }
     
     if(game.step == 2 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Доброе утро, наш любимый город! Как вам спалось?");
+        sendMessage(chat, "Доброе утро, наш любимый город! Как вам спалось?");
         game.ticksUntilNextStep = 5_000;
         game.step = 3;
     }
     
     if(game.step == 3 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Время голосовать за предателей. Кто-же это?", {
+        sendMessage(chat, "Время голосовать за предателей. Кто-же это?", {
             reply_markup: {
 				inline_keyboard: game.players.map(player => [{
 				    text: player.name,
@@ -152,7 +152,7 @@ function update(chat: number) {
     }
     
     if(game.step == 4 && game.ticksUntilNextStep <= 0) {
-        bot.sendMessage(chat, "Вешать мы никого не будет, не гуманно это как-то...");
+        sendMessage(chat, "Вешать мы никого не будет, не гуманно это как-то...");
         game.step = 1;
         game.ticksUntilNextStep = 5_000;
         
@@ -249,16 +249,16 @@ function start(chat: number) {
 	if(game == null) return;
 
 	if(game.startGameMessageId != null) {
-		bot.deleteMessage(chat, game.startGameMessageId);
+		deleteMessage(chat, game.startGameMessageId);
 		game.startGameMessageId = null;
 	}
 
 	game.isStarted = true;
-	bot.sendMessage(chat, "Игра \"Мафия\" началась!");
+	sendMessage(chat, "Игра \"Мафия\" началась!");
 	giveRoles(chat);
 	
 	for(const player of game.players) {
-	    bot.sendMessage(player.id, `Твоя роль: ${roles[player.role].name}. ${roles[player.role].description}`);
+	    sendMessage(player.id, `Твоя роль: ${roles[player.role].name}. ${roles[player.role].description}`);
 	}
 	
 	game.step = 1;
@@ -272,7 +272,7 @@ function cancel(chat: number) {
 	games[chat] = null;
 
 	if(game.startGameMessageId != null) {
-		bot.deleteMessage(chat, game.startGameMessageId);
+		deleteMessage(chat, game.startGameMessageId);
 		game.startGameMessageId = null;
 	}
 
@@ -327,7 +327,7 @@ function prepareGame(message: any) {
 			}
 		}).then(newMessage => {
 			newGame.startGameMessageId = newMessage.message_id;
-			bot.pinChatMessage(newMessage.chat.id, newMessage.message_id);
+			getBot().pinChatMessage(newMessage.chat.id, newMessage.message_id);
 		});
 		return;
 	}
@@ -340,7 +340,7 @@ export default function initMafiaLifecycle() {
 		const game = games[data] as Game;
 
 		if(game == null) {
-			bot.answerCallbackQuery(query.id, {
+			getBot().answerCallbackQuery(query.id, {
 				text: "Игра не найдена :(",
 				show_alert: true
 			});
@@ -349,7 +349,7 @@ export default function initMafiaLifecycle() {
 		}
 
 		if(game.isStarted) {
-			bot.answerCallbackQuery(query.id, {
+			getBot().answerCallbackQuery(query.id, {
 				text: "Игра уже началась :(",
 				show_alert: true
 			});
@@ -366,7 +366,7 @@ export default function initMafiaLifecycle() {
 		    return;
 		}*/
 
-		bot.answerCallbackQuery(query.id, {
+		getBot().answerCallbackQuery(query.id, {
 			text: "Ты присоединился!"
 		});
 
@@ -379,12 +379,12 @@ export default function initMafiaLifecycle() {
 		});
 
 		if(game.joinedMessageId != null) {
-			bot.editMessageText(getFancyPlayersList(game.players), {
+			getBot().editMessageText(getFancyPlayersList(game.players), {
 				message_id: game.joinedMessageId,
 				chat_id: data
 			});
 		} else {
-			bot.sendMessage(query.message?.chat.id || 0, getFancyPlayersList(game.players)).then(newMessage => {
+			sendMessage(query.message?.chat.id || 0, getFancyPlayersList(game.players)).then(newMessage => {
 			    game.joinedMessageId = newMessage.message_id;
 			});
 		}
@@ -394,7 +394,7 @@ export default function initMafiaLifecycle() {
 		const game = games[data] as Game;
 
 		if(game == null) {
-			bot.answerCallbackQuery(query.id, {
+			getBot().answerCallbackQuery(query.id, {
 				text: "Игра не найдена :(",
 				show_alert: true
 			});
@@ -403,7 +403,7 @@ export default function initMafiaLifecycle() {
 		}
 		
 		if(game.players[query.from.id].didVote) {
-		    bot.answerCallbackQuery(query.id, {
+		    getBot().answerCallbackQuery(query.id, {
 				text: "Ты уже проголосовал!",
 				show_alert: true
 			});
@@ -411,14 +411,14 @@ export default function initMafiaLifecycle() {
 			return;
 		}
 
-		bot.answerCallbackQuery(query.id, {
+		getBot().answerCallbackQuery(query.id, {
 			text: "Твой голос отдан!"
 		});
 		
 		game.players[data].gotVotes++;
 	});
 
-	addCommand("mafia_start", message => {
+	addTextCommand("mafia_start", message => {
 		if(games[message.chat.id] == null) {
 			prepareGame(message);
 			return;
@@ -427,7 +427,7 @@ export default function initMafiaLifecycle() {
 		start(message.chat.id);
 	});
 
-	addCommand("mafia_stop", message => {
+	addTextCommand("mafia_stop", message => {
 		const game = games[message.chat.id];
 
 		if(game == null) {
@@ -439,7 +439,7 @@ export default function initMafiaLifecycle() {
 		cancel(message.chat.id);
 	});
 
-	addCommand("mafia_extend", message => {
+	addTextCommand("mafia_extend", message => {
 		const game = games[message.chat.id];
 
 		if(game == null) {

@@ -1,5 +1,5 @@
 import { isDebug, isOwnerMessage } from "@util/common";
-import { addCommand } from "../..";
+import { addTextCommand } from "@logic/bot";
 import { replyTo, sendMessage, sendReply } from "@util/reply";
 
 const docs = 
@@ -35,11 +35,11 @@ const adminCommands =
     /reset - Сбросить базу данных`;
 
 export default function initCommon() {
-	addCommand("start", message => {
+	addTextCommand("start", message => {
 		replyTo(message, docs);
 	});
 
-	addCommand("help", message => {
+	addTextCommand("help", message => {
 		replyTo(message, commands);
 		
 		if(isOwnerMessage(message)) {
@@ -47,7 +47,7 @@ export default function initCommon() {
 		}
 	});
 
-	addCommand("ping", message => {
+	addTextCommand("ping", message => {
 		replyTo(message, "Понг!");
 	});
 }

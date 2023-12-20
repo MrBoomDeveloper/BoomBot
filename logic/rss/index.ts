@@ -1,6 +1,6 @@
 import { ChatId, Message } from "node-telegram-bot-api";
-import { addFeed, removeFeed, listFeeds, getFeed, getXmlFeed } from "./backend";
-import { addCommand, bot } from "../..";
+import { addFeed, removeFeed, listFeeds, getFeed, getXmlFeed, Feed } from "./backend";
+import { addTextCommand, getBot } from "@logic/bot";
 import { deleteMessageFrom, messageTo, replyTo, sendMessage } from "@util/reply";
 import { isUrl, parseCommandArgs, removeTelegramUrlPrefix } from "../../util/parser";
 import { isDebug, isOwnerMessage } from "@util/common";
@@ -28,7 +28,7 @@ async function add(message: Message) {
                 }
 
                 try {
-                    const chat = await bot.getChat(chatId);
+                    const chat = await getBot().getChat(chatId);
                     chatId = chat.id;
                 } catch(e) {
                     if(isError) return;
@@ -90,7 +90,7 @@ async function add(message: Message) {
 }
 
 export default function initRss() {
-    addCommand("rss", message => {
+    addTextCommand("rss", message => {
         messageTo(message, 
 `<b>Об RSS возможностях бота:</b>
 Получайте самые последние новости благодаря недооцененной технологии RSS прямо в личные сообщения или своф Telegram канал!
@@ -102,7 +102,7 @@ export default function initRss() {
 3. Наслаждайтесь!`, {"parse_mode": "HTML"});
     });
     
-    addCommand("rss_source", async (message) => {
+    addTextCommand("rss_source", async (message) => {
         const args = parseCommandArgs(message.text);
         replyTo(message, "Загружаем ленту...");
         
@@ -118,25 +118,25 @@ export default function initRss() {
         } catch(e) {
             replyTo(message, "Не удалось загрузить данные");
             
-            if(process.env.IS_DEBUG) {
+            if(isDebug()) {
                 replyTo(message, "Ошибка: " + JSON.stringify(e));
             }
         }
     });
     
-    addCommand("rss_explore", message => {
+    addTextCommand("rss_explore", message => {
         replyTo(message, "Не доступно на данный момент");
     });
     
-    addCommand("rss_remove", message => {
+    addTextCommand("rss_remove", message => {
         replyTo(message, "Недоступно на данный момент");
     });
     
-    addCommand("rss_list", message => {
+    addTextCommand("rss_list", message => {
         replyTo(message, "Недоступно на данный момент");
     });
     
-    addCommand("rss_update", async (message) => {
+    addTextCommand("rss_update", async (message) => {
         if(!isOwnerMessage(message)) return;
         const args = parseCommandArgs(message.text);
         let isError = false;
@@ -186,22 +186,23 @@ export default function initRss() {
                         text += `\n${item.date}.`;
                     }
                 }
-                
-                messageTo(message, text)
-                    .catch(e => {
-                        if(isError) return;
-                        isError = true;
+
+                try {
+                    await messageTo(message, text);
+                } catch(e) {
+                    if(isError) return;
+                    isError = true;
                         
-                        messageTo(message, "Не удалось отправить ленту");
+                    messageTo(message, "Не удалось отправить ленту");
                     
-                        if(process.env.IS_DEBUG) {
-                            messageTo(message,
+                    if(isDebug()) {
+                        messageTo(message,
 `Ошибка:
 ${JSON.stringify(e)}
 Элемент:
 ${JSON.stringify(item)}`);
-                        }
-                    });
+                    }
+                }
             }
         } catch(e) {
             if(isError) return;
@@ -209,13 +210,13 @@ ${JSON.stringify(item)}`);
             
             replyTo(message, "Произошла ошибка во время получения ленты.");
             
-            if(process.env.IS_DEBUG) {
+            if(isDebug()) {
                 replyTo(message, "Ошибка: " + JSON.stringify(e));
             }
         }
     });
     
-    addCommand("rss_add", add);
+    addTextCommand("rss_add", add);
 }
 
 

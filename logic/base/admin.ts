@@ -1,17 +1,17 @@
-import { addCommand } from "../..";
+import { addTextCommand } from "@logic/bot";
 import { deleteMessageFrom, messageTo, dmTo, replyTo, sendReply } from "@util/reply";
 import { resetDB } from "../db/unsafe";
 import { isDebug, isOwnerMessage } from "@util/common";
 import { parseCommandArgs } from "@util/parser";
 
 export default function initAdmin() {
-    addCommand("ban", message => {
+    addTextCommand("ban", message => {
 		if(!isOwnerMessage(message)) return;
 
 		replyTo(message, "Бан не доделан.");
 	});
 	
-	addCommand("say", message => {
+	addTextCommand("say", message => {
 		if(!isOwnerMessage(message)) return;
 
 		const args = parseCommandArgs(message.text);
@@ -26,7 +26,7 @@ export default function initAdmin() {
 		deleteMessageFrom(message);
 	});
 	
-	addCommand("reset", async (message) => {
+	addTextCommand("reset", async (message) => {
 		if(!isOwnerMessage(message)) return;
 
 		const currentDay = new Date().getDate();
