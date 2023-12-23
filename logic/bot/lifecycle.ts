@@ -2,8 +2,9 @@ import TelegramBot from "node-telegram-bot-api";
 import { getBot, credentials, didInit, errors, queryCallbacks, setBot, textCommands } from ".";
 import { replyTo } from "@util/reply";
 import { parseCommandName } from "@util/parser";
-import { expressApp, main } from "@src/index";
+import { main } from "@src/index";
 import { isDebug } from "@util/common";
+import { finishLifeChecker, isAnotherInstanceNewer } from "./life_checker";
 
 const MAX_RETRIES_PER_MINUTE = 5;
 let retriesCount = 0;
@@ -13,11 +14,17 @@ export function startBot() {
 }
 
 export function registerBotCallbacks(bot: TelegramBot) {
-	bot.on("polling_error", e => {
+	bot.on("polling_error", async (e) => {
 		console.error(`Polling error "${e.name}"! "${e.message}" at ${e.stack}`);
 	
 		if(e.message == errors.CLONE_INSTANCE) {
-			finishBot(new Error("Another bot instance is already running! Finishing...."));
+			if(await isAnotherInstanceNewer()) {
+				console.warn("Finish this instance because there is a more recent one!");
+				finishBot(new Error("Another bot instance is already running! Finishing...."));
+				return;
+			}
+			
+			console.warn("Please, turn off the other instance!!!");
 		}
 	});
 	
@@ -83,19 +90,21 @@ export async function finishBot(e?: Error) {
 		console.error("Failed to stop pooling!");
 	}
 
-	expressApp.use((req, res, next) => {
-		res.status(400);
-		res.end();
-	});
+	finishLifeChecker();
 	
 	if(isDebug()) {
-		console.info("We don't give a fuck, because this isn't a production.")
+		if(e != null) {
+			console.error("We don't give a fuck, because this isn't a production.")
+		}
+		
 		giveUp();
 		return;
 	}
 
-	console.info("Going quiet to respawn after some time...");
-	setTimeout(() => tryToReturnFromDead(), 10_000);
+	if(e != null) {
+		console.info("Going quiet to respawn after some time...");
+		setTimeout(() => tryToReturnFromDead(), 10_000);
+	}
 }
 
 function incrementRetrieCount() {
@@ -108,17 +117,17 @@ function incrementRetrieCount() {
 
 async function tryToReturnFromDead() {
 	if(retriesCount >= MAX_RETRIES_PER_MINUTE) {
-		console.info("This is so fucked up, that we tried to bring this shit from dead for a minute! God, please bless this server.");
+		console.error("This is so fucked up, that we tried to bring this shit from dead for a minute! God, please bless this server.");
 		giveUp();
 		return;
 	}
 
 	try {
 		console.info("Checking if new instance is dead, so we can reuse this one.");
-		const response = await fetch(process.env.HOST);
+		const isAnotherNewer = await isAnotherInstanceNewer();
 
-		if(response.status == 200) {
-			console.info("\"If the other me is better than me, why do i have to exist?\"");
+		if(isAnotherNewer) {
+			console.error("\"If the other me is better than me, why do i have to exist?\"");
 			giveUp();
 			return;
 		}
@@ -133,6 +142,6 @@ async function tryToReturnFromDead() {
 }
 
 function giveUp() {
-	console.info("Fuck everything, this instance is dead!");
+	console.error("Fuck everything, this instance is dead!");
 	process.exit(0);
 }

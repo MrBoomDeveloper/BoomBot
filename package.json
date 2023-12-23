@@ -4,7 +4,9 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "start": "tsx watch ./index.ts",
+    "start": "npm run watch",
+    "watch": "tsx watch ./index.ts",
+    "main": "tsx ./index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "MrBoomDev",
