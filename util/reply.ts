@@ -1,5 +1,35 @@
-import { ChatId, Message, SendMessageOptions } from "node-telegram-bot-api";
+import { Chat, ChatId, Message, SendMessageOptions } from "node-telegram-bot-api";
 import { getBot } from "@logic/bot";
+import { isUrl } from "./parser";
+import { removeTelegramUrlPrefix } from "./format";
+
+async function getChat(chatId: ChatId) {
+    try {
+        return await getBot().getChat(chatId);
+    } catch(e) {
+        return null;
+    }
+}
+
+export async function resolveChatId(chatId: any) {
+    if(chatId == null) return null;
+
+    if(!isNaN(chatId)) {
+        const chat = await getChat(chatId);
+        return chat?.id;
+    }
+
+    if(isUrl(chatId)) {
+        chatId = removeTelegramUrlPrefix(chatId);
+    }
+
+    if(!chatId.startsWith("@")) {
+        chatId = "@" + chatId;
+    }
+
+    const chat = await getChat(chatId);
+    return chat?.id;
+}
 
 export async function deleteMessageFrom(message: Message) {
     return await deleteMessage(message.chat.id, message.message_id);

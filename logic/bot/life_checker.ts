@@ -1,8 +1,8 @@
 import { isDebug } from "@util/common";
 import express, { Express } from "express";
 import { Server } from "http";
-import { stat as fileStat } from "fs/promises";
-import { resolve as resolvePath } from "path";
+import { readFile } from "fs/promises";
+import { registerServerPaths } from "@src/web/server";
 
 let expressApp: Express;
 let expressListener: Server;
@@ -41,9 +41,7 @@ export async function finishLifeChecker() {
 }
 
 export async function startLifeChecker() {
-	const path = resolvePath("./");
-	const stats = await fileStat(path);
-	lastChange = stats.mtime;
+	lastChange = new Date();
 
 	if(await isAnotherInstanceNewer()) {
 		throw new Error("There is a newer instance already running!");
@@ -51,13 +49,15 @@ export async function startLifeChecker() {
 
 	expressApp = express();
 
-	expressApp.get("*", (req, res) => {
+	expressApp.get("/", (req, res) => {
 		res.status(200);
 		res.json({
-			"root_path": path,
-			"last_change_date": lastChange
+			"last_change_date": lastChange,
+			"is_debug": isDebug()
 		});
 	});
+
+	registerServerPaths(expressApp);
 	
 	expressListener = expressApp.listen(8000, () => {
 		console.log("Server started!");

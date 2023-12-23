@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>BoomBot - Login</title>
+</head>
+<body>
+	<h1>BoomBot - Login</h1>
+	<input id="password" type="password" placeholder="Enter a password" />
+	<button onclick="submit()">Sign in</button>
+
+	<script>
+		function submit() {
+			const password = document.querySelector("#password");
+			document.cookie = `password=${password.value}; max-age=2592000`;
+			location.reload();
+		}
+	</script>
+</body>
+</html>

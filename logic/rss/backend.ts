@@ -1,11 +1,5 @@
-import { XMLParser, XMLBuilder, XMLValidator} from "fast-xml-parser";
-import { useDB, useQuery } from "../db/common";
-import { ChatId } from "node-telegram-bot-api";
-
-const parser = new XMLParser({
-    ignoreAttributes: false,
-    unpairedTags: ["img"]
-});
+import { XMLParser } from "fast-xml-parser";
+import { useQuery } from "../db/common";
 
 export interface Feed {
     title: string,
@@ -25,12 +19,27 @@ export interface FeedItem {
     tags?: string[]
 }
 
+export interface FeedOptions {
+    url: string,
+    isActive: boolean
+}
+
+const parser = new XMLParser({
+    ignoreAttributes: false,
+    unpairedTags: ["img"]
+});
+
 export async function getXmlFeed(url: string) {
     const response = await fetch(url);
     const xml = await response.text();
     const data = parser.parse(xml).rss.channel;
     
     return data;
+}
+
+export async function getChatFeeds(chatId: number) {
+    const data = await useQuery("SELECT * from rssfeeds");
+    return data[0] as any as FeedOptions[];
 }
 
 export async function getFeed(url: string) {
@@ -114,24 +123,6 @@ export async function getFeed(url: string) {
     }
     
     return feed;
-}
-
-export async function addFeed(chat: ChatId, url: string) {
-    const feed = await getFeed(url);
-    const response = await useQuery(`INSERT INTO rss_feeds VALUES(?, ?, true)`, [Number(chat), url]);
-    return feed;
-}
-
-export async function removeFeed(chat: ChatId, url: string) {
-    return await new Promise((res, rej) => {
-        rej({message: "Лента не была добавлена в канале."});
-    });
-}
-
-export async function listFeeds(chat: ChatId) {
-    return await new Promise((res, rej) => {
-        rej({message: "На канале отсутствуют какие-либо ленты."});
-    });
 }
 
 

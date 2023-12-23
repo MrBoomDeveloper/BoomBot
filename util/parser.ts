@@ -1,7 +1,5 @@
 import { credentials } from "@logic/bot";
 
-const TELEGRAM_URL_PREFIX = "https://t.me/";
-
 export function isUrl(url: string) {
     try {
         new URL(url).href;
@@ -9,16 +7,6 @@ export function isUrl(url: string) {
     } catch(e) {
         return false;
     }
-}
-
-export function removeTelegramUrlPrefix(url: string) {
-    url = url.trim();
-
-    if(!url.startsWith(TELEGRAM_URL_PREFIX)) {
-        return url;
-    }
-
-    return url.substring(TELEGRAM_URL_PREFIX.length);
 }
 
 export function parseCommandArgs(message: string) {
