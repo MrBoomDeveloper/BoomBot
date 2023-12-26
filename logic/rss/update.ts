@@ -59,6 +59,10 @@ export async function handleRssUpdate(message: Message) {
 						text += `\n${item.date}.`;
 					}
 				}
+				
+				if(isDebug()) {
+				    text += `\nID: ${item.id}`;
+				}
 
 				try {
 					await messageTo(message, text);

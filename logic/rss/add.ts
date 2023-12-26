@@ -7,10 +7,12 @@ import { useQuery } from "../db/common";
 import { removeSideLetters } from "@util/format";
 
 export async function handleRssAdd(message: Message) {
-    let isError = false;
     const args = parseCommandArgs(message.text);
+    
+    const url = args.length == 1
+        ? args[0] : args[1];
 
-	if(args.length == 0) {
+	if(url == null) {
 		replyTo(message, "Укажите ссылку на подписку!");
 		return;
 	}
@@ -18,36 +20,34 @@ export async function handleRssAdd(message: Message) {
 	const chatId = args.length > 1 
 		? await resolveChatId(args[0])
 		: message.chat.id;
-
-	if(chatId == null) {
-		replyTo(message, "Вы указали неправильный чат!");
-		return;
-	}
         
 	let loadingMessage: Message;
+	let feed: Feed;
 
 	if(chatId == null) {
 		replyTo(message, "Неправильный @id канала! Попробуйте скопировать его из шапки.");
 		return;
 	}
 	
+	if(!isUrl(url)) {
+		replyTo(message, "Указанна поврежденная ссылка: " + url);
+		return;
+	}
+	
 	try {
-		if(!isUrl(args[1])) {
-			replyTo(message, "Указанна поврежденная ссылка: " + args[1]);
-			return;
-		}
-		
-		let feed: Feed;
-		
+	    feed = await getFeed(url);
+	} catch(e) {
+	    replyTo(message, "Не удалось получить ленту, проверьте целостность ссылки.");
+	    return;
+	}
+	
+	try {
 		try {
 			loadingMessage = await replyTo(message, "Добавляем ленту...");
-			feed = await addFeed(chatId, args[1]);
+			await addFeed(chatId, url);
 		} catch(e) {
-			if(isError) return;
-			isError = true;
-				
 			console.error(e);
-			replyTo(message, "Не удалось получить ленту");
+			replyTo(message, "Лента уже добавлена!");
 			return;
 		}
 		
@@ -77,10 +77,7 @@ export async function handleRssAdd(message: Message) {
 
 async function addFeed(chat: ChatId, url: string) {
 	url = removeSideLetters(url, ["/", "#", "?", "&"]);
-    const feed = await getFeed(url);
-
-    await useQuery(`INSERT INTO rssfeeds VALUES(?, ?, true)`, [Number(chat), url]);
-    return feed;
+    return await useQuery(`INSERT INTO rssfeeds VALUES(?, ?, true)`, [Number(chat), url]);
 }
 
 

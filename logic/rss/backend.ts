@@ -16,7 +16,8 @@ export interface FeedItem {
     link?: string,
     image?: string,
     date?: string,
-    tags?: string[]
+    tags?: string[],
+    id: string
 }
 
 export interface FeedOptions {
@@ -38,7 +39,7 @@ export async function getXmlFeed(url: string) {
 }
 
 export async function getChatFeeds(chatId: number) {
-    const data = await useQuery("SELECT * from rssfeeds");
+    const data = await useQuery("SELECT * from rssfeeds WHERE chat = " + chatId);
     return data[0] as any as FeedOptions[];
 }
 
@@ -108,7 +109,8 @@ export async function getFeed(url: string) {
             image: item.thumb,
             link: item.link,
             tags: (item.keywords ? item.keywords.split(",") : []),
-            date: item.pubDate
+            date: item.pubDate,
+            id: item.guid || item.link || item.pubDate
         }
         
         if(item.category != null) {

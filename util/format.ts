@@ -2,7 +2,6 @@ const TELEGRAM_URL_PREFIX = "https://t.me/";
 
 export function removeSideLetters(text: string, letters: string[]) {
 	let didDoneStart = false, didDoneEnd = false;
-	console.log(letters);
 
 	while(!didDoneStart) {
 		let didFound = false;

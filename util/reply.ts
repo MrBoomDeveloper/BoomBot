@@ -15,6 +15,10 @@ export async function resolveChatId(chatId: any) {
     if(chatId == null) return null;
 
     if(!isNaN(chatId)) {
+        if(chatId.startsWith("-100")) {
+            return chatId;
+        }
+        
         const chat = await getChat(chatId);
         return chat?.id;
     }
